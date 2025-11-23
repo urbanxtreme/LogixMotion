@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Logixmotion | Software & Hardware Solutions</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                dark: "#0B0C15",
+                accent: "#00F0FF", // Cyber Cyan
+                secondary: "#7000FF", // Neon Purple
+                surface: "#151725",
+              },
+            },
+            fontFamily: {
+              orbitron: ["Orbitron", "sans-serif"],
+              rajdhani: ["Rajdhani", "sans-serif"],
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0b0c15;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #333;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #00f0ff;
+      }
+
+      body {
+        background-color: #0b0c15;
+        color: #fff;
+        overflow-x: hidden;
+      }
+
+      /* --- HERO & BACKGROUND --- */
+      #canvas-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+      }
+
+      /* Perspective Grid Floor */
+      .cyber-grid {
+        position: absolute;
+        bottom: 0;
+        left: -50%;
+        width: 200%;
+        height: 50%;
+        background-image: linear-gradient(
+            rgba(0, 240, 255, 0.1) 1px,
+            transparent 1px
+          ),
+          linear-gradient(90deg, rgba(0, 240, 255, 0.1) 1px, transparent 1px);
+        background-size: 40px 40px;
+        transform: perspective(500px) rotateX(60deg);
+        mask-image: linear-gradient(to top, rgba(0, 0, 0, 1), transparent);
+        -webkit-mask-image: linear-gradient(
+          to top,
+          rgba(0, 0, 0, 1),
+          transparent
+        );
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      /* --- ANIMATIONS --- */
+      .neon-text {
+        text-shadow: 0 0 10px rgba(0, 240, 255, 0.5),
+          0 0 20px rgba(0, 240, 255, 0.3);
+      }
+
+      .cursor {
+        display: inline-block;
+        width: 3px;
+        background-color: #00f0ff;
+        animation: blink 1s infinite;
+      }
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0;
+        }
+      }
+
+      /* Floating Cards Animation */
+      .float-element {
+        animation: float 6s ease-in-out infinite;
+      }
+      .float-delay-1 {
+        animation-delay: 1s;
+      }
+      .float-delay-2 {
+        animation-delay: 2s;
+      }
+      .float-delay-3 {
+        animation-delay: 3s;
+      }
+
+      @keyframes float {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-20px);
+        }
+      }
+
+      /* Nav Hover Effect */
+      .nav-link {
+        position: relative;
+      }
+      .nav-link::after {
+        content: "";
+        position: absolute;
+        bottom: -5px;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: #00f0ff;
+        transition: width 0.3s ease;
+        box-shadow: 0 0 10px #00f0ff;
+      }
+      .nav-link:hover::after {
+        width: 100%;
+      }
+
+      /* --- SECTIONS --- */
+      .reveal-section {
+        opacity: 0;
+        transform: translateY(30px);
+        transition: all 0.8s cubic-bezier(0.5, 0, 0, 1);
+      }
+      .reveal-section.active {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .portfolio-item {
+        opacity: 0;
+        transform: translateY(100px);
+      }
+
+      .glass-panel {
+        background: rgba(11, 12, 21, 0.8);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .hud-border {
+        border: 1px solid rgba(0, 240, 255, 0.3);
+        background: linear-gradient(
+          135deg,
+          rgba(0, 240, 255, 0.05) 0%,
+          transparent 100%
+        );
+      }
+
+      /* --- MAP UI STYLES --- */
+      .drone-icon {
+        background: transparent;
+        border: none;
+      }
+      .drone-body {
+        width: 0;
+        height: 0;
+        border-left: 10px solid transparent;
+        border-right: 10px solid transparent;
+        border-bottom: 25px solid #00f0ff;
+        filter: drop-shadow(0 0 5px #00f0ff);
+        transform-origin: center center;
+        transition: transform 0.1s linear;
+      }
+
+      /* Target Ping Animation for Map */
+      .ping-marker {
+        width: 20px;
+        height: 20px;
+        border: 2px solid #00f0ff;
+        border-radius: 50%;
+        animation: ping-expand 1s ease-out infinite;
+        background: rgba(0, 240, 255, 0.2);
+      }
+
+      @keyframes ping-expand {
+        0% {
+          transform: scale(0.5);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(2.5);
+          opacity: 0;
+        }
+      }
+
+      /* Circuit Line Animation */
+      .circuit-line {
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: rgba(255, 255, 255, 0.1);
+        transform: translateX(-50%);
+        z-index: 0;
+      }
+      .circuit-node {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 16px;
+        height: 16px;
+        background: #0b0c15;
+        border: 2px solid #00f0ff;
+        border-radius: 50%;
+        z-index: 1;
+        box-shadow: 0 0 10px #00f0ff;
+      }
+
+      /* Loader */
+      #loader {
+        position: fixed;
+        inset: 0;
+        background: #0b0c15;
+        z-index: 9999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+      }
+      .loader-bar {
+        width: 0%;
+        height: 4px;
+        background: #00f0ff;
+        transition: width 0.5s ease;
+      }
+    </style>
+  </head>
+  <body class="font-rajdhani text-lg">
+    <div id="loader">
+      <div class="font-orbitron text-4xl mb-4 tracking-widest text-white">
+        LOGIX<span class="text-brand-accent">MOTION</span>
+      </div>
+      <div class="w-64 h-1 bg-gray-800 rounded overflow-hidden">
+        <div class="loader-bar" id="progress-bar"></div>
+      </div>
+    </div>
+
+    <nav
+      class="fixed top-0 w-full z-50 glass-panel border-b border-brand-accent/20 transition-all duration-300 h-20"
+      id="navbar"
+    >
+      <div
+        class="container mx-auto px-6 h-full flex justify-between items-center"
+      >
+        <a href="#" class="flex items-center gap-2 group">
+          <div
+            class="w-8 h-8 bg-brand-accent flex items-center justify-center rounded-sm rotate-45 group-hover:rotate-90 transition-transform duration-500"
+          >
+            <div class="w-4 h-4 bg-black -rotate-45"></div>
+          </div>
+          <span
+            class="text-2xl font-orbitron font-bold text-white tracking-wider ml-2"
+          >
+            LOGIX<span class="text-brand-accent">MOTION</span>
+          </span>
+        </a>
+
+        <div
+          class="hidden md:flex items-center space-x-10 font-bold tracking-widest text-sm"
+        >
+          <a
+            href="#home"
+            class="nav-link hover:text-brand-accent transition-colors py-2"
+            >HOME</a
+          >
+          <a
+            href="#services"
+            class="nav-link hover:text-brand-accent transition-colors py-2"
+            >SERVICES</a
+          >
+          <a
+            href="#portfolio"
+            class="nav-link hover:text-brand-accent transition-colors py-2"
+            >WORKS</a
+          >
+          <a
+            href="#tech"
+            class="nav-link hover:text-brand-accent transition-colors py-2"
+            >TECH</a
+          >
+
+          <a
+            href="#contact"
+            class="ml-4 relative px-6 py-2 overflow-hidden group border border-brand-accent rounded bg-brand-accent/5"
+          >
+            <span
+              class="absolute w-64 h-0 transition-all duration-300 origin-center rotate-45 -translate-x-20 bg-brand-accent top-1/2 group-hover:h-64 group-hover:-translate-y-32 ease"
+            ></span>
+            <span
+              class="relative text-brand-accent transition duration-300 group-hover:text-black font-orbitron"
+              >CONTACT</span
+            >
+          </a>
+        </div>
+
+        <button
+          id="mobile-menu-btn"
+          class="md:hidden text-brand-accent text-2xl"
+        >
+          <i class="fas fa-bars"></i>
+        </button>
+      </div>
+
+      <div
+        id="mobile-menu"
+        class="hidden md:hidden bg-brand-dark/95 backdrop-blur-xl border-t border-brand-accent/20 absolute w-full"
+      >
+        <a
+          href="#home"
+          class="block px-6 py-4 border-b border-white/5 hover:text-brand-accent hover:bg-white/5"
+          >HOME</a
+        >
+        <a
+          href="#services"
+          class="block px-6 py-4 border-b border-white/5 hover:text-brand-accent hover:bg-white/5"
+          >SERVICES</a
+        >
+        <a
+          href="#portfolio"
+          class="block px-6 py-4 border-b border-white/5 hover:text-brand-accent hover:bg-white/5"
+          >WORKS</a
+        >
+        <a
+          href="#contact"
+          class="block px-6 py-4 hover:text-brand-accent hover:bg-white/5"
+          >CONTACT</a
+        >
+      </div>
+    </nav>
+
+    <section
+      id="home"
+      class="relative min-h-screen flex items-center justify-center overflow-hidden pt-20"
+    >
+      <canvas id="canvas-container"></canvas>
+      <div class="cyber-grid"></div>
+      <div
+        class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,#0B0C15_90%)] z-0 pointer-events-none"
+      ></div>
+
+      <div
+        class="absolute left-10 top-1/3 hidden lg:block float-element float-delay-1 z-10"
+      >
+        <div class="hud-border p-4 w-48 rounded backdrop-blur-sm">
+          <div class="text-xs text-brand-accent mb-2 font-mono">CPU_LOAD</div>
+          <div class="w-full h-1 bg-gray-800 rounded overflow-hidden mb-2">
+            <div class="h-full bg-brand-accent w-[75%] animate-pulse"></div>
+          </div>
+          <div class="flex justify-between text-xs text-gray-400 font-mono">
+            <span>Core_01</span>
+            <span>78%</span>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="absolute right-10 bottom-1/3 hidden lg:block float-element float-delay-2 z-10"
+      >
+        <div class="hud-border p-4 w-56 rounded backdrop-blur-sm">
+          <div
+            class="text-xs text-brand-secondary mb-2 font-mono flex items-center gap-2"
+          >
+            <i class="fas fa-network-wired"></i> NETWORK_STATUS
+          </div>
+          <div class="space-y-1 font-mono text-[10px] text-gray-400">
+            <div class="flex justify-between">
+              <span>Packets_Sent:</span> <span class="text-white">8,421</span>
+            </div>
+            <div class="flex justify-between">
+              <span>Latency:</span> <span class="text-green-400">12ms</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="container mx-auto px-6 z-10 text-center relative">
+        <div
+          class="inline-flex items-center gap-2 mb-6 px-4 py-1 border border-brand-accent/30 rounded-full text-xs text-brand-accent tracking-[0.2em] font-bold bg-brand-accent/5 fade-in-element backdrop-blur-md"
+        >
+          <div class="w-2 h-2 rounded-full bg-brand-accent animate-ping"></div>
+          SYSTEMS ONLINE
+        </div>
+
+        <h1
+          class="text-5xl md:text-8xl font-orbitron font-black mb-6 leading-tight neon-text"
+        >
+          WE BUILD THE <br />
+          <span id="typing-text" class="text-brand-accent"></span
+          ><span class="cursor">&nbsp;</span>
+        </h1>
+
+        <p
+          class="text-gray-400 max-w-2xl mx-auto mb-10 text-lg fade-in-element leading-relaxed"
+        >
+          Logixmotion specializes in bridging the gap between physical hardware
+          and digital intelligence. From
+          <span class="text-brand-accent">Embedded Systems</span> to
+          <span class="text-brand-secondary">Advanced Map UI</span>.
+        </p>
+
+        <div
+          class="flex flex-col md:flex-row justify-center gap-6 fade-in-element"
+        >
+          <a
+            href="#portfolio"
+            class="group relative px-8 py-4 bg-brand-accent text-brand-dark font-bold font-orbitron rounded overflow-hidden shadow-[0_0_20px_rgba(0,240,255,0.3)] hover:shadow-[0_0_40px_rgba(0,240,255,0.6)] transition-shadow"
+          >
+            <span
+              class="relative z-10 group-hover:text-white transition-colors duration-300"
+              >EXPLORE WORKS</span
+            >
+            <div
+              class="absolute inset-0 h-full w-full scale-0 rounded transition-all duration-300 group-hover:scale-150 group-hover:bg-brand-secondary origin-center rounded-full"
+            ></div>
+          </a>
+          <a
+            href="#contact"
+            class="px-8 py-4 border border-white/20 hover:border-brand-accent hover:text-brand-accent transition-all rounded font-bold backdrop-blur-sm font-orbitron"
+          >
+            START PROJECT
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section id="services" class="py-24 bg-brand-dark relative z-10">
+      <div class="container mx-auto px-6">
+        <div class="text-center mb-16 reveal-section">
+          <h2 class="text-4xl font-orbitron font-bold mb-4">
+            OUR <span class="text-brand-secondary">SERVICES</span>
+          </h2>
+          <div class="h-1 w-20 bg-brand-secondary mx-auto"></div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div
+            class="service-card p-8 rounded-xl bg-brand-surface border border-white/5 hover:border-brand-accent/50 hover:-translate-y-2 transition-all duration-300 group reveal-section"
+          >
+            <div
+              class="w-14 h-14 bg-brand-accent/10 rounded-lg flex items-center justify-center mb-6 group-hover:bg-brand-accent group-hover:text-black transition-colors shadow-[0_0_15px_rgba(0,240,255,0.2)]"
+            >
+              <i
+                class="fas fa-microchip text-2xl text-brand-accent group-hover:text-black"
+              ></i>
+            </div>
+            <h3 class="text-xl font-bold font-orbitron mb-3 text-white">
+              Embedded Systems
+            </h3>
+            <p class="text-gray-400 text-sm leading-relaxed">
+              Custom firmware, microcontroller programming, and IoT solutions
+              connecting the physical and digital worlds.
+            </p>
+          </div>
+
+          <div
+            class="service-card p-8 rounded-xl bg-brand-surface border border-white/5 hover:border-brand-accent/50 hover:-translate-y-2 transition-all duration-300 group reveal-section"
+            style="transition-delay: 100ms"
+          >
+            <div
+              class="w-14 h-14 bg-purple-500/10 rounded-lg flex items-center justify-center mb-6 group-hover:bg-purple-500 group-hover:text-white transition-colors shadow-[0_0_15px_rgba(112,0,255,0.2)]"
+            >
+              <i
+                class="fas fa-map-marked-alt text-2xl text-purple-500 group-hover:text-white"
+              ></i>
+            </div>
+            <h3 class="text-xl font-bold font-orbitron mb-3 text-white">
+              Map UI & GIS
+            </h3>
+            <p class="text-gray-400 text-sm leading-relaxed">
+              Advanced mapping solutions using Leaflet and MapLibre. Custom tile
+              layers, geolocation, and spatial data visualization.
+            </p>
+          </div>
+
+          <div
+            class="service-card p-8 rounded-xl bg-brand-surface border border-white/5 hover:border-brand-accent/50 hover:-translate-y-2 transition-all duration-300 group reveal-section"
+            style="transition-delay: 200ms"
+          >
+            <div
+              class="w-14 h-14 bg-blue-500/10 rounded-lg flex items-center justify-center mb-6 group-hover:bg-blue-500 group-hover:text-white transition-colors shadow-[0_0_15px_rgba(59,130,246,0.2)]"
+            >
+              <i
+                class="fas fa-code text-2xl text-blue-500 group-hover:text-white"
+              ></i>
+            </div>
+            <h3 class="text-xl font-bold font-orbitron mb-3 text-white">
+              Software Dev
+            </h3>
+            <p class="text-gray-400 text-sm leading-relaxed">
+              Full-stack web and desktop applications. Python automation, robust
+              backends, and scalable architecture.
+            </p>
+          </div>
+
+          <div
+            class="service-card p-8 rounded-xl bg-brand-surface border border-white/5 hover:border-brand-accent/50 hover:-translate-y-2 transition-all duration-300 group reveal-section"
+            style="transition-delay: 300ms"
+          >
+            <div
+              class="w-14 h-14 bg-pink-500/10 rounded-lg flex items-center justify-center mb-6 group-hover:bg-pink-500 group-hover:text-white transition-colors shadow-[0_0_15px_rgba(236,72,153,0.2)]"
+            >
+              <i
+                class="fas fa-pen-nib text-2xl text-pink-500 group-hover:text-white"
+              ></i>
+            </div>
+            <h3 class="text-xl font-bold font-orbitron mb-3 text-white">
+              UI/UX Design
+            </h3>
+            <p class="text-gray-400 text-sm leading-relaxed">
+              Futuristic, intuitive interfaces. We design user experiences that
+              are as beautiful as they are functional.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="py-16 bg-brand-surface relative overflow-hidden">
+      <div
+        class="absolute top-0 right-0 w-96 h-96 bg-brand-accent/5 rounded-full blur-3xl"
+      ></div>
+      <div
+        class="absolute bottom-0 left-0 w-96 h-96 bg-brand-secondary/5 rounded-full blur-3xl"
+      ></div>
+
+      <div
+        class="container mx-auto px-6 flex flex-col lg:flex-row items-center gap-12"
+      >
+        <div class="lg:w-1/3 reveal-section">
+          <div
+            class="inline-block mb-2 px-2 py-1 bg-brand-accent/10 text-brand-accent text-xs font-bold tracking-widest border border-brand-accent/20 rounded"
+          >
+            INTERACTIVE DEMO
+          </div>
+          <h3 class="text-4xl font-orbitron font-bold mb-6">
+            Live <span class="text-brand-accent">Fleet Command</span>
+          </h3>
+          <p class="text-gray-400 mb-8 text-lg leading-relaxed">
+            Experience our real-time coordinate translation engine. We don't
+            just show maps; we allow you to interact with physical assets in
+            real-time.
+          </p>
+
+          <div
+            class="p-4 bg-brand-dark border border-brand-accent/30 rounded-lg relative overflow-hidden group"
+          >
+            <div class="absolute top-0 left-0 w-1 h-full bg-brand-accent"></div>
+            <h4 class="font-bold text-white mb-2 font-orbitron">
+              <i class="fas fa-gamepad mr-2 text-brand-accent"></i>TRY IT OUT
+            </h4>
+            <p class="text-sm text-gray-400">
+              Click anywhere on the map to deploy the
+              <span class="text-brand-accent">Drone Unit</span> to those
+              coordinates.
+            </p>
+          </div>
+        </div>
+
+        <div
+          class="lg:w-2/3 w-full h-[500px] relative reveal-section shadow-2xl rounded-xl overflow-hidden border border-brand-accent/20"
+        >
+          <div class="absolute top-4 right-4 z-[500] pointer-events-none">
+            <div
+              class="bg-brand-dark/90 backdrop-blur border-l-2 border-brand-accent p-4 rounded shadow-lg min-w-[200px]"
+            >
+              <div class="text-[10px] text-gray-500 font-orbitron mb-1">
+                TARGET COORDINATES
+              </div>
+              <div
+                id="hud-coords"
+                class="font-mono text-brand-accent text-xs mb-3"
+              >
+                WAITING FOR INPUT...
+              </div>
+
+              <div class="text-[10px] text-gray-500 font-orbitron mb-1">
+                UNIT STATUS
+              </div>
+              <div class="flex items-center gap-2 text-xs text-white">
+                <i
+                  class="fas fa-circle-notch fa-spin text-brand-secondary"
+                  id="unit-icon"
+                ></i>
+                <span id="unit-status">IDLE</span>
+              </div>
+            </div>
+          </div>
+
+          <div
+            id="demo-map"
+            class="w-full h-full bg-brand-dark"
+            style="cursor: crosshair"
+          ></div>
+        </div>
+      </div>
+    </section>
+
+    <section
+      id="portfolio"
+      class="py-24 bg-brand-dark relative overflow-hidden"
+    >
+      <div
+        class="absolute inset-0 opacity-10"
+        style="
+          background-image: linear-gradient(#333 1px, transparent 1px),
+            linear-gradient(90deg, #333 1px, transparent 1px);
+          background-size: 40px 40px;
+        "
+      ></div>
+
+      <div class="circuit-line" id="portfolio-line"></div>
+
+      <div class="container mx-auto px-6 relative z-10">
+        <div class="text-center mb-24 reveal-section">
+          <h2 class="text-4xl font-orbitron font-bold mb-4">
+            PREVIOUS <span class="text-brand-accent">WORKS</span>
+          </h2>
+          <div class="h-1 w-20 bg-brand-accent mx-auto"></div>
+        </div>
+
+        <div class="space-y-40">
+          <div class="portfolio-item relative group">
+            <div class="circuit-node hidden md:block" style="top: 50%"></div>
+
+            <div
+              class="absolute -inset-1 bg-gradient-to-r from-brand-accent to-blue-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500"
+            ></div>
+            <div
+              class="relative bg-brand-surface border border-brand-accent/30 rounded-2xl p-8 md:p-12 overflow-hidden shadow-2xl"
+            >
+              <div
+                class="absolute top-0 left-0 w-16 h-16 border-t-2 border-l-2 border-brand-accent rounded-tl-2xl"
+              ></div>
+              <div
+                class="absolute bottom-0 right-0 w-16 h-16 border-b-2 border-r-2 border-brand-accent rounded-br-2xl"
+              ></div>
+
+              <div class="flex flex-col md:flex-row items-center gap-12">
+                <div class="md:w-1/2 w-full">
+                  <div
+                    class="relative h-80 w-full rounded-lg overflow-hidden border border-white/10 bg-black/50"
+                  >
+                    <canvas
+                      id="airpen-canvas"
+                      class="absolute inset-0 w-full h-full"
+                    ></canvas>
+                    <div
+                      class="absolute bottom-4 left-4 font-mono text-xs text-brand-accent"
+                    >
+                      <i class="fas fa-terminal mr-2"></i>PYTHON_CV_MODULE.py
+                      loaded...
+                    </div>
+                    <div
+                      class="pointer-hand absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-4xl text-white/80"
+                    >
+                      <i class="fas fa-hand-pointer animate-pulse"></i>
+                    </div>
+                  </div>
+                </div>
+                <div class="md:w-1/2">
+                  <div class="flex items-center gap-4 mb-6">
+                    <span
+                      class="px-3 py-1 text-xs font-bold bg-blue-500/20 text-blue-400 rounded-full border border-blue-500/30"
+                      >PYTHON</span
+                    >
+                    <span
+                      class="px-3 py-1 text-xs font-bold bg-green-500/20 text-green-400 rounded-full border border-green-500/30"
+                      >OPENCV</span
+                    >
+                    <span
+                      class="px-3 py-1 text-xs font-bold bg-orange-500/20 text-orange-400 rounded-full border border-orange-500/30"
+                      >HARDWARE</span
+                    >
+                  </div>
+                  <h3 class="text-3xl font-orbitron font-bold mb-4 text-white">
+                    Smart Pen
+                  </h3>
+                  <p class="text-gray-400 mb-6 leading-relaxed text-lg">
+                    Content
+                  </p>
+                  <button
+                    class="group flex items-center gap-2 text-brand-accent font-bold uppercase tracking-wider text-sm hover:text-white transition-colors"
+                  >
+                    View Schematic
+                    <i
+                      class="fas fa-arrow-right transition-transform group-hover:translate-x-1"
+                    ></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="portfolio-item relative group">
+            <div class="circuit-node hidden md:block" style="top: 50%"></div>
+
+            <div
+              class="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500"
+            ></div>
+            <div
+              class="relative bg-brand-surface border border-purple-500/30 rounded-2xl p-8 md:p-12 overflow-hidden shadow-2xl"
+            >
+              <div
+                class="absolute top-0 left-0 w-16 h-16 border-t-2 border-l-2 border-brand-secondary rounded-tl-2xl"
+              ></div>
+              <div
+                class="absolute bottom-0 right-0 w-16 h-16 border-b-2 border-r-2 border-brand-secondary rounded-br-2xl"
+              ></div>
+
+              <div
+                class="flex flex-col md:flex-row-reverse items-center gap-12"
+              >
+                <div class="md:w-1/2 w-full">
+                  <div
+                    class="relative h-80 w-full bg-slate-900 rounded-lg overflow-hidden border border-white/10 flex flex-col"
+                  >
+                    <div
+                      class="h-8 border-b border-white/5 flex items-center px-4 gap-2 bg-black/20"
+                    >
+                      <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                      <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                      <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                    </div>
+                    <div class="flex-1 p-4 grid grid-cols-3 gap-2">
+                      <div
+                        class="col-span-2 bg-brand-dark rounded border border-white/5 relative overflow-hidden"
+                      >
+                        <div
+                          class="absolute w-2 h-2 bg-brand-accent rounded-full top-1/4 left-1/4 animate-ping"
+                        ></div>
+                        <div
+                          class="absolute w-2 h-2 bg-brand-accent rounded-full top-1/4 left-1/4"
+                        ></div>
+                        <div
+                          class="absolute w-2 h-2 bg-purple-500 rounded-full bottom-1/3 right-1/3 animate-ping"
+                          style="animation-delay: 0.5s"
+                        ></div>
+                        <div
+                          class="absolute w-2 h-2 bg-purple-500 rounded-full bottom-1/3 right-1/3"
+                        ></div>
+                        <div
+                          class="absolute inset-0"
+                          style="
+                            background-image: radial-gradient(
+                              #333 1px,
+                              transparent 1px
+                            );
+                            background-size: 20px 20px;
+                            opacity: 0.3;
+                          "
+                        ></div>
+                      </div>
+                      <div class="col-span-1 flex flex-col gap-2">
+                        <div
+                          class="h-1/3 bg-brand-dark rounded border border-white/5 p-2 animate-pulse"
+                        ></div>
+                        <div
+                          class="h-1/3 bg-brand-dark rounded border border-white/5 p-2"
+                        ></div>
+                        <div
+                          class="h-1/3 bg-brand-dark rounded border border-white/5 p-2"
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="md:w-1/2">
+                  <div class="flex items-center gap-4 mb-6">
+                    <span
+                      class="px-3 py-1 text-xs font-bold bg-brand-accent/20 text-brand-accent rounded-full border border-brand-accent/30"
+                      >MAPLIBRE</span
+                    >
+                    <span
+                      class="px-3 py-1 text-xs font-bold bg-purple-500/20 text-purple-400 rounded-full border border-purple-500/30"
+                      >IOT</span
+                    >
+                  </div>
+                  <h3 class="text-3xl font-orbitron font-bold mb-4 text-white">
+                    Project
+                  </h3>
+                  <p class="text-gray-400 mb-6 leading-relaxed text-lg">
+                    Content
+                  </p>
+                  <button
+                    class="group flex items-center gap-2 text-brand-secondary font-bold uppercase tracking-wider text-sm hover:text-white transition-colors"
+                  >
+                    View Dashboard
+                    <i
+                      class="fas fa-arrow-right transition-transform group-hover:translate-x-1"
+                    ></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section
+      id="tech"
+      class="py-12 border-t border-b border-white/5 bg-brand-surface/50 overflow-hidden"
+    >
+      <div class="flex whitespace-nowrap" id="tech-ticker"></div>
+    </section>
+
+    <section id="contact" class="py-24 relative overflow-hidden">
+      <div
+        class="absolute right-0 bottom-0 w-1/2 h-full bg-gradient-to-l from-brand-secondary/10 to-transparent skew-x-12 transform origin-bottom-right"
+      ></div>
+
+      <div class="container mx-auto px-6 relative z-10">
+        <div
+          class="max-w-4xl mx-auto bg-brand-surface border border-white/10 rounded-2xl p-8 md:p-12 shadow-2xl reveal-section"
+        >
+          <div class="text-center mb-10">
+            <h2 class="text-3xl font-orbitron font-bold mb-2">
+              INITIATE <span class="text-brand-accent">CONTACT</span>
+            </h2>
+            <p class="text-gray-400">
+              Have a project in mind? Let's calibrate your vision.
+            </p>
+          </div>
+
+          <form
+            class="space-y-6"
+            onsubmit="event.preventDefault(); showModal();"
+          >
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="relative">
+                <input
+                  type="text"
+                  id="name"
+                  class="w-full bg-brand-dark border border-gray-700 rounded p-4 text-white focus:border-brand-accent focus:outline-none transition-colors peer"
+                  placeholder=" "
+                  required
+                />
+                <label
+                  for="name"
+                  class="absolute left-4 top-4 text-gray-500 transition-all peer-focus:-top-3 peer-focus:left-2 peer-focus:bg-brand-surface peer-focus:text-brand-accent peer-focus:text-xs peer-placeholder-shown:top-4 pointer-events-none"
+                  >Name</label
+                >
+              </div>
+              <div class="relative">
+                <input
+                  type="email"
+                  id="email"
+                  class="w-full bg-brand-dark border border-gray-700 rounded p-4 text-white focus:border-brand-accent focus:outline-none transition-colors peer"
+                  placeholder=" "
+                  required
+                />
+                <label
+                  for="email"
+                  class="absolute left-4 top-4 text-gray-500 transition-all peer-focus:-top-3 peer-focus:left-2 peer-focus:bg-brand-surface peer-focus:text-brand-accent peer-focus:text-xs peer-placeholder-shown:top-4 pointer-events-none"
+                  >Email</label
+                >
+              </div>
+            </div>
+            <div class="relative">
+              <textarea
+                id="message"
+                rows="4"
+                class="w-full bg-brand-dark border border-gray-700 rounded p-4 text-white focus:border-brand-accent focus:outline-none transition-colors peer"
+                placeholder=" "
+                required
+              ></textarea>
+              <label
+                for="message"
+                class="absolute left-4 top-4 text-gray-500 transition-all peer-focus:-top-3 peer-focus:left-2 peer-focus:bg-brand-surface peer-focus:text-brand-accent peer-focus:text-xs peer-placeholder-shown:top-4 pointer-events-none"
+                >Project Details</label
+              >
+            </div>
+            <button
+              type="submit"
+              class="w-full py-4 bg-brand-secondary hover:bg-brand-accent hover:text-brand-dark text-white font-bold rounded transition-all duration-300 shadow-[0_0_20px_rgba(112,0,255,0.4)] hover:shadow-[0_0_30px_rgba(0,240,255,0.6)] font-orbitron tracking-wider"
+            >
+              TRANSMIT DATA
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <footer class="bg-black py-12 border-t border-white/10">
+      <div
+        class="container mx-auto px-6 flex flex-col md:flex-row justify-between items-center"
+      >
+        <div class="mb-6 md:mb-0">
+          <a
+            href="#"
+            class="text-2xl font-orbitron font-bold text-white tracking-wider"
+          >
+            LOGIX<span class="text-brand-accent">MOTION</span>
+          </a>
+          <p class="text-gray-500 text-sm mt-2">
+            &copy; 2025 Logixmotion Inc. All Systems Operational.
+          </p>
+        </div>
+        <div class="flex space-x-6">
+          <a href="#" class="text-gray-400 hover:text-white transition-colors"
+            ><i class="fab fa-linkedin text-xl"></i
+          ></a>
+          <a href="#" class="text-gray-400 hover:text-white transition-colors"
+            ><i class="fab fa-github text-xl"></i
+          ></a>
+          <a href="#" class="text-gray-400 hover:text-white transition-colors"
+            ><i class="fab fa-twitter text-xl"></i
+          ></a>
+        </div>
+      </div>
+    </footer>
+
+    <div
+      id="modal"
+      class="fixed inset-0 z-50 flex items-center justify-center pointer-events-none opacity-0 transition-opacity duration-300"
+    >
+      <div class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+      <div
+        class="bg-brand-surface border border-brand-accent p-8 rounded-xl relative z-10 max-w-sm text-center transform scale-90 transition-transform duration-300"
+        id="modal-content"
+      >
+        <div
+          class="w-16 h-16 bg-brand-accent/20 rounded-full flex items-center justify-center mx-auto mb-4"
+        >
+          <i class="fas fa-check text-3xl text-brand-accent"></i>
+        </div>
+        <h3 class="text-2xl font-orbitron text-white mb-2">Message Received</h3>
+        <p class="text-gray-400 mb-6">
+          Thank you. Our team will analyze your request and respond shortly.
+        </p>
+        <button
+          onclick="hideModal()"
+          class="px-6 py-2 bg-brand-accent text-brand-dark font-bold rounded hover:bg-white transition-colors"
+        >
+          CLOSE
+        </button>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+      /* --- 1. Loader Logic --- */
+      window.addEventListener("load", () => {
+        const bar = document.getElementById("progress-bar");
+        bar.style.width = "100%";
+
+        setTimeout(() => {
+          document.getElementById("loader").style.opacity = "0";
+          setTimeout(() => {
+            document.getElementById("loader").style.display = "none";
+            initAnimations(); // Start other animations
+          }, 500);
+        }, 800);
+      });
+
+      /* --- 2. Typing Effect (Reverted Phrases) --- */
+      const textElement = document.getElementById("typing-text");
+      const phrases = ["FUTURE.", "INTELLIGENCE.", "HARDWARE.", "SOFTWARE."];
+      let phraseIndex = 0;
+      let charIndex = 0;
+      let isDeleting = false;
+
+      function typeEffect() {
+        const currentPhrase = phrases[phraseIndex];
+
+        if (isDeleting) {
+          textElement.textContent = currentPhrase.substring(0, charIndex - 1);
+          charIndex--;
+        } else {
+          textElement.textContent = currentPhrase.substring(0, charIndex + 1);
+          charIndex++;
+        }
+
+        let typeSpeed = isDeleting ? 100 : 200;
+
+        if (!isDeleting && charIndex === currentPhrase.length) {
+          typeSpeed = 2000; // Pause at end
+          isDeleting = true;
+        } else if (isDeleting && charIndex === 0) {
+          isDeleting = false;
+          phraseIndex = (phraseIndex + 1) % phrases.length;
+          typeSpeed = 500;
+        }
+
+        setTimeout(typeEffect, typeSpeed);
+      }
+
+      /* --- 3. Hero Canvas Animation (Network/Circuit Nodes) --- */
+      const canvas = document.getElementById("canvas-container");
+      const ctx = canvas.getContext("2d");
+      let width, height;
+      let particles = [];
+
+      function resizeCanvas() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+      }
+
+      class Particle {
+        constructor() {
+          this.x = Math.random() * width;
+          this.y = Math.random() * height;
+          this.vx = (Math.random() - 0.5) * 0.5; // Slow movement
+          this.vy = (Math.random() - 0.5) * 0.5;
+          this.size = Math.random() * 2 + 1;
+          this.color = Math.random() > 0.5 ? "#00F0FF" : "#7000FF"; // Brand colors
+        }
+        update() {
+          this.x += this.vx;
+          this.y += this.vy;
+          if (this.x < 0 || this.x > width) this.vx *= -1;
+          if (this.y < 0 || this.y > height) this.vy *= -1;
+        }
+        draw() {
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fillStyle = this.color;
+          ctx.fill();
+        }
+      }
+
+      function initCanvas() {
+        particles = [];
+        for (let i = 0; i < 60; i++) {
+          // Number of nodes
+          particles.push(new Particle());
+        }
+      }
+
+      function animateCanvas() {
+        ctx.clearRect(0, 0, width, height);
+
+        // Draw connections
+        for (let i = 0; i < particles.length; i++) {
+          particles[i].update();
+          particles[i].draw();
+
+          for (let j = i; j < particles.length; j++) {
+            const dx = particles[i].x - particles[j].x;
+            const dy = particles[i].y - particles[j].y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance < 150) {
+              ctx.beginPath();
+              ctx.strokeStyle = `rgba(100, 100, 255, ${1 - distance / 150})`;
+              ctx.lineWidth = 0.5;
+              ctx.moveTo(particles[i].x, particles[i].y);
+              ctx.lineTo(particles[j].x, particles[j].y);
+              ctx.stroke();
+            }
+          }
+        }
+        requestAnimationFrame(animateCanvas);
+      }
+
+      /* --- 4. Air Pen Canvas (Simulated Drawing) --- */
+      const airCanvas = document.getElementById("airpen-canvas");
+      const airCtx = airCanvas.getContext("2d");
+      let airTime = 0;
+
+      function resizeAirCanvas() {
+        if (airCanvas.parentElement) {
+          airCanvas.width = airCanvas.parentElement.offsetWidth;
+          airCanvas.height = airCanvas.parentElement.offsetHeight;
+        }
+      }
+
+      function animateAirPen() {
+        if (!airCanvas.width) resizeAirCanvas();
+
+        // Clear with trail effect
+        airCtx.fillStyle = "rgba(0, 0, 0, 0.1)";
+        airCtx.fillRect(0, 0, airCanvas.width, airCanvas.height);
+
+        airTime += 0.05;
+
+        // Figure 8 pattern
+        const cx = airCanvas.width / 2;
+        const cy = airCanvas.height / 2;
+        const px = cx + Math.sin(airTime) * 100;
+        const py = cy + Math.sin(airTime * 2) * 50;
+
+        airCtx.beginPath();
+        airCtx.arc(px, py, 3, 0, Math.PI * 2);
+        airCtx.fillStyle = "#00F0FF";
+        airCtx.fill();
+
+        // Draw line connecting logic (simulating vector tracking)
+        if (airTime % 1 < 0.1) {
+          airCtx.strokeStyle = "rgba(0, 240, 255, 0.5)";
+          airCtx.beginPath();
+          airCtx.moveTo(cx, cy);
+          airCtx.lineTo(px, py);
+          airCtx.stroke();
+        }
+
+        requestAnimationFrame(animateAirPen);
+      }
+
+      /* --- 5. Scroll Intersection Observer with Anime.js --- */
+      function setupScrollReveal() {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                // Default fade up
+                if (entry.target.classList.contains("reveal-section")) {
+                  entry.target.classList.add("active");
+                }
+
+                // Special Anime.js handling for Portfolio Items
+                if (entry.target.classList.contains("portfolio-item")) {
+                  anime({
+                    targets: entry.target,
+                    opacity: [0, 1],
+                    translateY: [100, 0],
+                    scale: [0.95, 1],
+                    duration: 1200,
+                    easing: "spring(1, 80, 10, 0)",
+                  });
+                }
+              }
+            });
+          },
+          { threshold: 0.15, rootMargin: "0px 0px -100px 0px" }
+        );
+
+        document
+          .querySelectorAll(".reveal-section")
+          .forEach((el) => observer.observe(el));
+
+        // Observe portfolio items specifically
+        document
+          .querySelectorAll(".portfolio-item")
+          .forEach((el) => observer.observe(el));
+      }
+
+      /* --- 6. Interactive Map Demo (CLEAN VERSION) --- */
+      function initMap() {
+        // 1. Initialize Map
+        const map = L.map("demo-map", {
+          zoomControl: false,
+          attributionControl: false,
+          scrollWheelZoom: false,
+          dragging: true,
+        }).setView([8.5241, 76.9366], 15);
+
+        // 2. Dark Sci-Fi Tiles
+        L.tileLayer(
+          "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+          {
+            maxZoom: 19,
+          }
+        ).addTo(map);
+
+        // 3. Create the Drone Icon
+        const droneIcon = L.divIcon({
+          className: "drone-icon",
+          html: `<div class="drone-body" style="border-bottom-color: #00F0FF; filter: drop-shadow(0 0 10px #00F0FF);"></div>`,
+          iconSize: [30, 30],
+          iconAnchor: [15, 15],
+        });
+
+        // 4. Initial Drone Position
+        let currentPos = [8.5241, 76.9366];
+        const droneMarker = L.marker(currentPos, { icon: droneIcon }).addTo(
+          map
+        );
+
+        // Target Marker (The visual "Click" ripple)
+        let targetMarker = null;
+
+        // HUD Elements
+        const coordsDisplay = document.getElementById("hud-coords");
+        const statusDisplay = document.getElementById("unit-status");
+        const unitIcon = document.getElementById("unit-icon");
+
+        // 5. ANIMATION LOGIC
+        let targetPos = null;
+        let animationFrameId;
+
+        // Click Interaction
+        map.on("click", function (e) {
+          const dest = e.latlng;
+          targetPos = [dest.lat, dest.lng];
+
+          // Update HUD
+          coordsDisplay.innerText = `${dest.lat.toFixed(4)}, ${dest.lng.toFixed(
+            4
+          )}`;
+          statusDisplay.innerText = "DEPLOYING...";
+          statusDisplay.className = "text-brand-accent animate-pulse";
+          unitIcon.className = "fas fa-paper-plane text-brand-accent";
+
+          // Visual "Ping" at click location
+          if (targetMarker) map.removeLayer(targetMarker);
+
+          const pingIcon = L.divIcon({
+            className: "ping-marker",
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
+          });
+          targetMarker = L.marker(dest, { icon: pingIcon }).addTo(map);
+
+          // Start Flying
+          animateMovement();
+        });
+
+        function animateMovement() {
+          if (!targetPos) return;
+
+          // Simple Lerp (Linear Interpolation) for smooth movement
+          const latDiff = targetPos[0] - currentPos[0];
+          const lngDiff = targetPos[1] - currentPos[1];
+
+          // Move 5% of the distance per frame (Ease-out effect)
+          const newLat = currentPos[0] + latDiff * 0.05;
+          const newLng = currentPos[1] + lngDiff * 0.05;
+
+          // Rotation Math
+          const angle = Math.atan2(lngDiff, latDiff) * (180 / Math.PI);
+          const iconElement = droneMarker
+            .getElement()
+            ?.querySelector(".drone-body");
+          if (iconElement) {
+            iconElement.style.transform = `rotate(${angle}deg)`;
+          }
+
+          // Update Position
+          currentPos = [newLat, newLng];
+          droneMarker.setLatLng(currentPos);
+
+          // Check if arrived (very close)
+          if (Math.abs(latDiff) < 0.0001 && Math.abs(lngDiff) < 0.0001) {
+            statusDisplay.innerText = "ON STATION";
+            statusDisplay.className = "text-green-400";
+            unitIcon.className = "fas fa-check-circle text-green-400";
+            cancelAnimationFrame(animationFrameId);
+          } else {
+            animationFrameId = requestAnimationFrame(animateMovement);
+          }
+        }
+      }
+
+      /* --- 7. Tech Ticker --- */
+      function initTicker() {
+        const tech = [
+          "Python",
+          "C++",
+          "React",
+          "Angular",
+          "Vue",
+          "Leaflet",
+          "MapLibre",
+          "Arduino",
+          "Raspberry Pi",
+          "OpenCV",
+          "TensorFlow",
+          "Node.js",
+          "Docker",
+          "AWS",
+        ];
+        const container = document.getElementById("tech-ticker");
+
+        // Duplicate content for infinite scroll
+        const content = tech
+          .map(
+            (t) =>
+              `<span class="mx-8 text-gray-500 font-orbitron hover:text-brand-accent transition-colors cursor-default">${t}</span>`
+          )
+          .join("");
+        container.innerHTML = content + content + content; // Triple it to be safe
+
+        anime({
+          targets: "#tech-ticker",
+          translateX: "-33.33%",
+          duration: 20000,
+          easing: "linear",
+          loop: true,
+        });
+      }
+
+      /* --- Initialization & Events --- */
+      function initAnimations() {
+        typeEffect();
+        resizeCanvas();
+        initCanvas();
+        animateCanvas();
+        animateAirPen();
+        setupScrollReveal();
+        initMap();
+        initTicker();
+      }
+
+      window.addEventListener("resize", () => {
+        resizeCanvas();
+        initCanvas(); // Re-init particles on resize
+      });
+
+      // Mobile Menu
+      const btn = document.getElementById("mobile-menu-btn");
+      const menu = document.getElementById("mobile-menu");
+      btn.addEventListener("click", () => {
+        menu.classList.toggle("hidden");
+      });
+
+      // Modal Logic
+      function showModal() {
+        const modal = document.getElementById("modal");
+        modal.style.pointerEvents = "auto";
+        modal.style.opacity = "1";
+        modal.querySelector("#modal-content").classList.remove("scale-90");
+        modal.querySelector("#modal-content").classList.add("scale-100");
+        document.querySelector("form").reset();
+      }
+
+      function hideModal() {
+        const modal = document.getElementById("modal");
+        modal.style.opacity = "0";
+        modal.style.pointerEvents = "none";
+        modal.querySelector("#modal-content").classList.add("scale-90");
+        modal.querySelector("#modal-content").classList.remove("scale-100");
+      }
+    </script>
+  </body>
+</html>
